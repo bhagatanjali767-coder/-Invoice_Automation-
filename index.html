@@ -1,0 +1,344 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InvoiceAI - Enterprise Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --sidebar-bg: #111827; --sidebar-hover: #1f2937; --sidebar-active: #3b82f6; --sidebar-text: #9ca3af;
+            --bg-color: #f9fafb; --card-bg: #ffffff; --border-color: #e5e7eb;
+            --text-main: #111827; --text-muted: #6b7280; --text-light: #9ca3af;
+            --blue-main: #3b82f6; --blue-light: #eff6ff; --green-main: #10b981;
+            --green-light: #ecfdf5; --orange-main: #f59e0b; --orange-light: #fffbeb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; scroll-behavior: smooth; }
+        body { display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-main); overflow: hidden; }
+        
+        /* Sidebar Styles */
+        .sidebar { width: 260px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 20px 0; }
+        .brand { padding: 0 24px 30px; display: flex; align-items: center; gap: 12px; }
+        .brand-icon { background: var(--sidebar-active); color: white; padding: 10px; border-radius: 10px; font-size: 18px; }
+        .brand-text h2 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+        .brand-text p { font-size: 11px; color: var(--sidebar-text); }
+        .nav-menu { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 0 14px; }
+        .nav-item { padding: 12px 16px; border-radius: 8px; color: var(--sidebar-text); text-decoration: none; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; transition: 0.2s; cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; }
+        .nav-item:hover { background-color: var(--sidebar-hover); color: white; }
+        .nav-item.active { background-color: var(--sidebar-active); color: white; }
+        .sidebar-footer { padding: 20px 14px; border-top: 1px solid #1f2937; }
+
+        /* Main Content Styles */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 30px 50px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; }
+        .header-left h1 { font-size: 26px; font-weight: 700; color: var(--text-main); }
+        .header-left p { font-size: 14px; color: var(--text-muted); }
+        .header-right { display: flex; gap: 15px; }
+
+        /* KPI Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 30px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .stat-label { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        .stat-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+        .stat-icon { width: 54px; height: 54px; border-radius: 14px; display: flex; justify-content: center; align-items: center; font-size: 22px; }
+
+        /* Charts Section */
+        .dashboard-section { margin-bottom: 40px; }
+        .charts-grid { display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 24px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+        /* Loader Overlay */
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); z-index: 1000; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--blue-main); border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Upload Area */
+        .upload-card { text-align: center; border: 2px dashed #3b82f6; background: #f0f7ff; cursor: pointer; transition: 0.2s; padding: 40px; border-radius: 12px; }
+        .upload-card:hover { background: #e0efff; border-color: #2563eb; }
+        
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 14px; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-paid { background: var(--green-light); color: var(--green-main); }
+        .badge-unpaid { background: var(--orange-light); color: var(--orange-main); }
+
+        /* Buttons */
+        .btn { padding: 10px 18px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--blue-main); color: white; }
+        .btn-success { background: var(--green-main); color: white; }
+        .btn-white { background: white; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-rpa { background: #6366f1; color: white; margin: 15px auto 0; font-size: 14px; padding: 12px 25px; display: none; }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        #hiddenFileInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <h3 style="color: var(--blue-main);">RPA Intelligence Engine</h3>
+        <p style="color: var(--text-muted);">Extracting & Validating Invoice Data...</p>
+    </div>
+
+    <aside class="sidebar">
+        <div>
+            <div class="brand">
+                <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
+                <div class="brand-text"><h2>InvoiceAI</h2><p>RPA System v2.0</p></div>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" onclick="scrollToSection('header')"><i class="fa-solid fa-gauge-high"></i> Overview</button>
+                <button class="nav-item" onclick="scrollToSection('invoices-section')"><i class="fa-solid fa-file-invoice-dollar"></i> Invoices</button>
+                <button class="nav-item" onclick="scrollToSection('analytics-section')"><i class="fa-solid fa-chart-line"></i> Analytics</button>
+            </nav>
+        </div>
+        <div class="sidebar-footer">
+            <div class="nav-item">
+                <i class="fa-solid fa-circle-user" style="font-size: 24px;"></i>
+                <div>
+                    <div style="font-weight: 700; color: white;">Arul Jangam</div>
+                    <div style="font-size: 11px; color: var(--sidebar-text);">2023090029</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainScroll">
+        <header class="header" id="header">
+            <div class="header-left">
+                <h1>Overview Dashboard</h1>
+                <p>Automating Invoice Processing System</p>
+            </div>
+            <div class="header-right">
+                <button class="btn btn-white" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i> Fullscreen</button>
+                <button class="btn btn-primary" onclick="document.getElementById('hiddenFileInput').click()"><i class="fa-solid fa-plus"></i> New Upload</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div><p class="stat-label">Total Processed</p><div class="stat-value" id="count-total">0</div></div>
+                <div class="stat-icon" style="background: var(--blue-light); color: var(--blue-main);"><i class="fa-solid fa-file-invoice"></i></div>
+            </div>
+            <div class="stat-card">
+                <div><p class="stat-label">Total Paid (₹)</p><div class="stat-value" id="total-paid">0</div></div>
+                <div class="stat-icon" style="background: var(--green-light); color: var(--green-main);"><i class="fa-solid fa-circle-check"></i></div>
+            </div>
+            <div class="stat-card">
+                <div><p class="stat-label">Total Unpaid (₹)</p><div class="stat-value" id="total-unpaid">0</div></div>
+                <div class="stat-icon" style="background: var(--orange-light); color: var(--orange-main);"><i class="fa-solid fa-clock"></i></div>
+            </div>
+        </div>
+
+        <div class="dashboard-section" id="analytics-section">
+            <div class="charts-grid">
+                <div class="card">
+                    <div class="card-title"><i class="fa-solid fa-chart-column"></i> Monthly Volume (Year-Aware)</div>
+                    <canvas id="barChart" height="220"></canvas>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fa-solid fa-chart-pie"></i> Payment Status Mix</div>
+                    <canvas id="pieChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <div class="card upload-card" onclick="document.getElementById('hiddenFileInput').click()">
+                <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--blue-main); margin-bottom: 15px;"></i>
+                <h3>Select Invoice Documents</h3>
+                <p>Attach files to queue for RPA processing (.docx, .pdf, .png, .jpg)</p>
+            </div>
+            <input type="file" id="hiddenFileInput" accept=".docx, .pdf, .png, .jpg, .jpeg" multiple onchange="queueFiles()">
+            
+            <button id="processBtn" class="btn btn-rpa" onclick="executeRPA()">
+                <i class="fa-solid fa-robot"></i> EXECUTE RPA ENGINE (<span id="queueCount">0</span> FILES)
+            </button>
+            
+            <p id="statusTxt" style="text-align: center; margin-top: 10px; font-size: 13px; color: var(--text-muted);"></p>
+        </div>
+
+        <div class="dashboard-section" id="invoices-section" style="display:none;">
+            <div class="card">
+                <div class="card-title" style="justify-content: space-between;">
+                    <span><i class="fa-solid fa-list-check"></i> Processed Records <button id="resetFilterBtn" class="btn btn-white" style="display:none; font-size: 11px; padding: 4px 8px;" onclick="resetTable()">Show All</button></span>
+                    <button class="btn btn-success" onclick="downloadMasterCSV()"><i class="fa-solid fa-file-excel"></i> Export Master CSV</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Invoice #</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let sessionData = [];
+        let barChart, pieChart;
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+            // Note: Event target logic handled by click
+        }
+
+        function getMonthYearLabel(dateStr) {
+            if (!dateStr || dateStr.includes("Found") || dateStr.includes("Error")) return "Unknown";
+            const parts = dateStr.split(/[\/\-\.]/);
+            if (parts.length === 3) {
+                // Adjust index based on DD-MM-YYYY format
+                const dateObj = new Date(parts[2], parts[1]-1, parts[0]);
+                return dateObj.toLocaleString('default', { month: 'short', year: 'numeric' });
+            }
+            return "Unknown";
+        }
+
+        function queueFiles() {
+            const files = document.getElementById('hiddenFileInput').files;
+            if (files.length > 0) {
+                document.getElementById('processBtn').style.display = 'flex';
+                document.getElementById('queueCount').innerText = files.length;
+                document.getElementById('statusTxt').innerText = `📂 ${files.length} documents ready for processing.`;
+            }
+        }
+
+        async function executeRPA() {
+            const files = document.getElementById('hiddenFileInput').files;
+            if (files.length === 0) return;
+
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('processBtn').style.display = 'none';
+
+            const formData = new FormData();
+            for (let f of files) formData.append("files", f);
+
+            try {
+        // Updated to a relative URL so it works both locally and on Render perfectly!
+        const res = await fetch("/upload/", {
+            method: "POST",
+            body: formData
+        });
+
+        const json = await res.json();
+                
+                // Slight delay for professional feel
+                setTimeout(() => {
+                    sessionData = [...sessionData, ...json.data_preview];
+                    refreshDashboard();
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('statusTxt').innerText = `✅ Processed ${json.data_preview.length} files.`;
+                }, 1800);
+                
+            } catch (err) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('statusTxt').innerText = "❌ Connection failed. Ensure backend is running.";
+                console.error(err);
+            }
+        }
+
+        function refreshDashboard() {
+            document.getElementById('invoices-section').style.display = 'block';
+            renderTable(sessionData);
+            updateKPIs();
+            updateCharts();
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            data.forEach(r => {
+                const sBadge = r["Payment Status"] === "Paid" ? 'badge-paid' : 'badge-unpaid';
+                tbody.innerHTML += `<tr>
+                    <td><strong>${r["Source File"]}</strong></td>
+                    <td>${r["Invoice Number"]}</td>
+                    <td>${r["Date"]}</td>
+                    <td><strong>₹${r["Total Amount"]}</strong></td>
+                    <td><span class="badge ${sBadge}">${r["Payment Status"]}</span></td>
+                    <td><span class="badge badge-paid">SUCCESS</span></td>
+                </tr>`;
+            });
+        }
+
+        function resetTable() {
+            renderTable(sessionData);
+            document.getElementById('resetFilterBtn').style.display = 'none';
+        }
+
+        function updateKPIs() {
+            let paid = 0, unpaid = 0;
+            sessionData.forEach(r => {
+                const val = parseFloat(r["Total Amount"].toString().replace(/,/g, ''));
+                if (!isNaN(val)) {
+                    if (r["Payment Status"] === "Paid") paid += val; else unpaid += val;
+                }
+            });
+            document.getElementById('count-total').innerText = sessionData.length;
+            document.getElementById('total-paid').innerText = paid.toLocaleString('en-IN', {minimumFractionDigits: 2});
+            document.getElementById('total-unpaid').innerText = unpaid.toLocaleString('en-IN', {minimumFractionDigits: 2});
+        }
+
+        function updateCharts() {
+            const months = {}, mix = {Paid: 0, Unpaid: 0};
+            sessionData.forEach(r => {
+                const my = getMonthYearLabel(r["Date"]);
+                months[my] = (months[my] || 0) + 1;
+                mix[r["Payment Status"]]++;
+            });
+
+            if (barChart) barChart.destroy();
+            barChart = new Chart(document.getElementById('barChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(months), datasets: [{ label: 'Invoices', data: Object.values(months), backgroundColor: '#3b82f6', borderRadius: 6 }] },
+                options: {
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const label = barChart.data.labels[elements[0].index];
+                            const filtered = sessionData.filter(r => getMonthYearLabel(r["Date"]) === label);
+                            renderTable(filtered);
+                            document.getElementById('resetFilterBtn').style.display = 'inline-block';
+                        }
+                    }
+                }
+            });
+
+            if (pieChart) pieChart.destroy();
+            pieChart = new Chart(document.getElementById('pieChart'), {
+                type: 'doughnut',
+                data: { labels: ['Paid', 'Unpaid'], datasets: [{ data: [mix.Paid, mix.Unpaid], backgroundColor: ['#10b981', '#f59e0b'] }] }
+            });
+        }
+
+        function downloadMasterCSV() {
+            let csv = "Filename,Invoice No,Date,Amount,Status\n";
+            sessionData.forEach(r => csv += `"${r["Source File"]}","${r["Invoice Number"]}","${r["Date"]}","${r["Total Amount"]}","${r["Payment Status"]}"\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "InvoiceAI_Master_List.csv";
+            link.click();
+        }
+    </script>
+</body>
+</html>
